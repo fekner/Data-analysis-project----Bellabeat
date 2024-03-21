@@ -1,0 +1,303 @@
+---
+title: "How Can a Wellness Technology Company Play It Smart?"
+author: "Frida Ekner"
+date: "2024-02-22"
+abstract: "Bellabeat, a high-tech company specializing in health-focused smart products, has experienced rapid growth since its founding in 2013. With a mission to empower women with knowledge about their health and habits, Bellabeat collects data on activity, sleep, stress, and reproductive health through its smart devices. In this project, conducted as part of the Google Data Analytics Certificate program, an analysis of smart device usage data was performed to uncover trends and insights. The study aimed to provide high-level recommendations for informing Bellabeat's marketing strategy. The analysis revealed significant trends, including users spending a considerable portion of their time inactive, a positive correlation between steps taken and calories burned, and distinct patterns in daily activity and sleep. Based on these findings, recommendations were made to enhance Bellabeat's marketing strategy, such as introducing activity reminders, implementing fitness challenge groups, and incorporating morning exercise initiatives. These insights can help Bellabeat better serve its customers and optimize revenue generation opportunities." 
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+ 
+
+# 1 Introduction and purpose
+
+This project is made as an optional part of the Google Data Analytics Certificate. Bellabeat is a high-tech company that manufactures health-focused smart products, founded by Urška Sršen and Sando Mur in 2013 and has grown rapidly and quickly positioned itself as a tech-driven wellness company for women since. Collecting data on activity, sleep, stress, and reproductive health has allowed Bellabeat to empower women with knowledge about their own health and habits. By 2016, Bellabeat had opened offices around the world and launched multiple products. Bellabeat products became available through a growing number of online retailers in addition to their own e-commerce channel on their website. 
+
+Sršen knows that an analysis of Bellabeat’s available consumer data would reveal more opportunities for growth. She has asked the marketing analytics team to focus on a Bellabeat product and analyze smart device usage data in order to gain insight into how people are already using their smart devices. Then, using this information, she would like high-level recommendations for how these trends can inform Bellabeat marketing strategy. Sršen requests an analysis of smart device usage data in order to gain insight into how consumers use one Bellabeat smart devices. The research questions that will guide this project are the following.
+
+1. What are some trends in smart device usage?
+2. How could these trends apply to Bellabeat customers?
+3. How could these trends help influence Bellabeat marketing strategy? 
+
+\newpage
+
+# 2 Data sources
+
+The FitBit Fitness Tracker Data is a publicly accessible dataset provided by Möbius under the CC0 database protection license. This dataset consists of 18 .csv files and encompasses the aggregated personal fitness tracker information from thirty FitBit users who have provided consent for the submission of their personal data. The data includes parameters such as heart rate, sleep patterns, activity intensities, physical exercises, and other pertinent information essential for analyzing their lifestyle habits. The following files from the dataset were selected:
+
+* dailyActivity_merged.csv
+* hourlyCalories_merged.csv
+* hourlySteps_merged.csv
+* sleepDay_merged.csv
+
+
+# 3 Cleaning and manipulation
+
+## 3.1 Data cleaning
+
+Prior to the process of cleaning the data, some necessary packages first need to be downloaded, the data has to be imported and a preview is imperative to be familiarized with he structure. After that the data will be checked for null values and duplicated records will be removed. 
+
+```{r eval=FALSE}
+library(tidyverse)
+library(skimr)
+library(here)
+library(janitor)
+```
+
+```{r}
+daily_activity <- read.csv("dailyActivity_merged.csv")
+hourly_calories <- read.csv("hourlyCalories_merged.csv")
+hourly_steps <- read.csv("hourlySteps_merged.csv")
+sleep <- read.csv("sleepDay_merged.csv")
+```
+
+```{r}
+library(dplyr)
+data_preview <- list(
+  daily_activity = sample_n(daily_activity,1),
+  hourly_calories = sample_n(hourly_calories,1),
+  hourly_steps = sample_n(hourly_steps,1),
+  sleep = sample_n(sleep,1)
+)
+data_preview
+```
+
+
+### 3.1.1 Checking for null values
+```{r}
+null_values <- list(
+  daily_activity = any(is.na(daily_activity)),
+  hourly_calories = any(is.na(hourly_calories)),
+  hourly_steps = any(is.na(hourly_steps)),
+  sleep = any(is.na(sleep))
+)
+null_values
+```
+
+### 3.1.2 Removing duplicated records
+
+```{r}
+library(dplyr)
+daily_activity <- distinct(daily_activity)
+hourly_calories <- distinct(hourly_calories)
+hourly_steps <- distinct(hourly_steps)
+sleep <- distinct(sleep)
+```
+
+### 3.1.3 Checking the number of unique IDs
+```{r}
+
+unique_ids <- list(
+  daily_activity = daily_activity %>% summarise(n_distinct(Id)),
+  hourly_calories = hourly_calories %>% summarise(n_distinct(Id)),
+  hourly_steps = hourly_steps %>% summarise(n_distinct(Id)),
+  sleep = sleep %>% summarise(n_distinct(Id))
+)
+unique_ids
+```
+
+### 3.1.4 Finding the data types
+
+```{r}
+
+data_types <- list(
+  daily_activity = str(daily_activity),
+  hourly_calories = str(hourly_calories),
+  hourly_steps = str(hourly_steps),
+  sleep = str(sleep)
+)
+```
+
+\newpage
+
+## 3.2 Data transformation
+
+In the previous steps when the data was explored some possibilities for improvements were found. It was for example noticed that the dates in each table are in string types, which is quite inconvenient. A transformation of the types to datetime is necessary to prepare the data for the next step, analysis. 
+
+### 3.2.1 Renaming columns
+
+```{r}
+daily_activity <- daily_activity %>%
+  rename(Date = ActivityDate,
+         Steps = TotalSteps,
+         Distance = TotalDistance)
+
+hourly_calories <- hourly_calories %>%
+  rename(Time = ActivityHour)
+
+hourly_steps <- hourly_steps %>%
+  rename(Time = ActivityHour,
+         Steps = StepTotal)
+
+sleep <- sleep %>%
+  rename(Date = SleepDay,
+         MinutesAsleep = TotalMinutesAsleep,
+         TimeInBed = TotalTimeInBed)
+
+```
+
+### 3.2.2 Converting types
+```{r}
+daily_activity$Date <- as.POSIXct(daily_activity$Date, format = "%m/%d/%Y")
+hourly_calories$Time <- as.POSIXct(hourly_calories$Time, format = "%m/%d/%Y %I:%M:%S %p")
+hourly_steps$Time <- as.POSIXct(hourly_steps$Time, format = "%m/%d/%Y %I:%M:%S %p")
+sleep$Date <- as.POSIXct(sleep$Date, format = "%m/%d/%Y %I:%M:%S %p")
+```
+
+### 3.2.3 Creating new columns
+
+```{r}
+library(lubridate)
+daily_activity$DayOfTheWeek <- weekdays(daily_activity$Date)
+hourly_calories$DayOfTheWeek <- weekdays(hourly_calories$Time)
+```
+
+
+### 3.2.3 Merging data
+
+```{r}
+library(dplyr)
+merged_daily <- merge(daily_activity, sleep, by = "Date")
+hourly_steps$Time <- as.POSIXct(hourly_steps$Time, tz = "UTC")
+hourly_calories$Time <- as.POSIXct(hourly_calories$Time, tz = "UTC")
+hourly_steps$Time <- round(hourly_steps$Time, units = "secs")
+hourly_calories$Time <- round(hourly_calories$Time, units = "secs")
+merged_hourly <- merge(hourly_steps, hourly_calories, by = "Time")
+```
+
+
+\newpage 
+
+# 4 Analysis
+
+To start of the analysis some general statistics from the data is first viewed. One interesting finding is that the average number of steps is 7675, with an average of 320 steps every hour.
+
+```{r}
+summary_stats_1 <- summary(merged_daily)
+summary_stats_2 <- summary(merged_hourly)
+print(summary_stats_1)
+print(summary_stats_2)
+```
+
+## Averages by day of the week
+
+From the table average_by_day one interesting, but maybe not that surprising finding, is that the longest average time spent awake in bed, 50 minutes, occurs on Sundays. A probable explanation is that many people try to go to bed earlier on Sundays than the previous two days, and have rescheduled their inner sleeping clock, and they therefor lay awake longer in bed. 
+
+```{r}
+
+library(dplyr)
+averages_by_hour <- merged_hourly %>%
+  group_by(DayOfTheWeek) %>%
+  summarise(AverageHourlyCalories = mean(Calories),
+            AverageHourlySteps = mean(Steps))
+averages_by_day <- merged_daily %>%
+  group_by(DayOfTheWeek) %>%
+  summarise(AverageTimeInBed = mean(TimeInBed),
+            AverageMinutesAsleep = mean(MinutesAsleep),
+            AverageTimeAwakeInBed = (mean(TimeInBed)-mean(MinutesAsleep)))
+
+print(averages_by_hour)
+print(averages_by_day)
+
+```
+
+## Time slept on weekdays
+
+```{r}
+library(dplyr)
+convert_to_hours_minutes <- function(minutes) {
+  hours <- floor(minutes / 60)
+  remaining_minutes <- minutes %% 60
+  return(paste(hours, "hours", remaining_minutes, "minutes", sep = " "))
+}
+
+filtered_data <- merged_daily %>%
+  filter(DayOfTheWeek %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"),
+         MinutesAsleep > 0) 
+
+filtered_data$HoursMinutesAsleep <- convert_to_hours_minutes(filtered_data$MinutesAsleep)
+average_minutes_asleep <- filtered_data %>%
+  group_by(DayOfTheWeek) %>%
+  summarise(AverageHoursMinutesAsleep = convert_to_hours_minutes(mean(MinutesAsleep)))
+print(average_minutes_asleep)
+
+```
+
+## Most active hours
+
+```{r}
+library(dplyr)
+
+merged_hourly$Time <- hour(merged_hourly$Time)
+hourly_calories_mean <- merged_hourly %>%
+  group_by(Time) %>%
+  summarise(mean_calories = mean(Calories))
+print(hourly_calories_mean)
+
+```
+
+\newpage
+
+# 5 Results
+
+In this section some of the key findings are visualized, to achieve a better understanding of the results.
+
+
+```{r}
+library(ggplot2)
+
+scatter_plot <- ggplot(merged_hourly, aes(x = Steps, y = Calories)) +
+  geom_point() + 
+  labs(title = "Relationship Between Total Steps Taken and Calories Burned",
+       x = "Total Steps Taken",
+       y = "Calories Burned") +  
+  theme_minimal() 
+print(scatter_plot)
+
+```
+
+```{r}
+library(ggplot2)
+scatter_plot <- ggplot(merged_daily, aes(x = TimeInBed, y = MinutesAsleep)) +
+  geom_point(alpha = 0.5) +  
+  labs(title = "Relationship Between Time Asleep and Time in Bed",
+       x = "Time Asleep (minutes)",
+       y = "Time in Bed (minutes)") +  # Set axis labels
+  theme_minimal() 
+print(scatter_plot)
+
+```
+
+```{r}
+library(ggplot2)
+
+hourly_steps <- aggregate(Steps ~ Time, data = merged_hourly, FUN = mean)
+busy_time_plot <- ggplot(hourly_steps, aes(x = Time, y = Steps)) +
+  geom_point() +  
+  geom_smooth(method = "loess", se = FALSE) +  
+  labs(title = "Busiest Time of the Day Based on Steps Taken",
+       x = "Hour of the Day",
+       y = "Average Steps Taken") +  # Set axis labels
+  theme_minimal()  
+print(busy_time_plot)
+
+```
+
+```{r, fig.width=6, fig.height=4}
+
+ggplot(hourly_calories_mean, aes(x = Time, y = mean_calories)) +
+  geom_line() +
+  labs(title = "Average Calories Burned by Hour of the Day",
+       x = "Hour of the Day",
+       y = "Average Calories Burned") +
+  theme_minimal()
+```
+
+
+
+# 6 Conclusion
+
+The analysis of smart device usage revealed several noteworthy trends among users. Notably, users spend a significant portion of their time, approximately 81.2%, in an inactive state. Moreover, a positive correlation exists between the total number of steps taken and the total number of calories burned, indicating the importance of physical activity for caloric expenditure. Daily activity patterns exhibit distinct peaks during midday and early evening, with activity levels tapering off by late evening. Sleep patterns indicate an average nightly sleep duration of approximately 7 hours, with Sundays emerging as the day users tend to sleep the longest. In light of these findings, several recommendations can enhance Bellabeat's marketing strategy. These include the introduction of activity reminders within the Bellabeat app, the implementation of fitness challenge groups to encourage user engagement, and the incorporation of morning exercise initiatives to capitalize on peak activity periods. Additionally, establishing a customer feedback mechanism and introducing premium user features such as a "User Nearby" function can further optimize user experience and revenue generation opportunities for Bellabeat.
+
