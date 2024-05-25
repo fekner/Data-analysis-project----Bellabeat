@@ -1,2 +1,1 @@
-# Data-analysis-project----Women-s-health-and-fitness
 This project, part of the Google Data Analytics Certificate program, analyzes smart device usage data from Bellabeat, a high-tech company specializing in health-focused smart products. The study uncovers significant trends, including user activity patterns and sleep habits, and provides recommendations to inform Bellabeat's marketing strategy. Insights from the analysis aim to empower Bellabeat in optimizing its products and services to better serve its customers and enhance overall user experience.
